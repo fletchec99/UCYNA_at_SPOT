@@ -380,6 +380,153 @@ length(grep("SAR", parsed_eLSA_CLR_5m$Y_tax_abr)) #0 #YAY!
 #Write it out!
 write.table(x=parsed_eLSA_CLR_5m, file="eLSA_output/piecewise_eLSA/CLR_5m/parsed_eLSA_output_CLR_5m_11.24.2020.tsv", sep="\t", quote=F, row.names=F)
 
+#Parse 5m CLR transformed data for supplementary table----
+setwd("/Users/colettef/Desktop/DataAnalysis/SPOT_16S_18S_eLSA/")
+
+eLSA_data=read.table("eLSA_output/piecewise_eLSA/CLR_5m/parsed_eLSA_output_CLR_5m_11.24.2020.tsv", header=T, stringsAsFactors = F, sep="\t")
+dim(eLSA_data) #12313 33
+names(eLSA_data)
+
+#Export interaction data from Cytoskape session
+inter_data=read.csv("eLSA_output/piecewise_eLSA/CLR_5m/UCYNA-all3ASVs_default_edge_datafrom_11.24.2020.csv", header=T, stringsAsFactors = F)
+dim(inter_data)
+names(inter_data)
+
+eLSA_data$X_abr[grep("UCYN", eLSA_data$X_tax_abr)] #once
+length(grep("UCYN", eLSA_data$Y_tax_abr)) #179 times
+unique(eLSA_data$Y_abr[grep("UCYN", eLSA_data$Y_tax_abr)])
+
+grep("e6425353849111275755617_A", inter_data$name) #That'x ix 6
+unique(eLSA_data$Y_abr[grep("UCYN", eLSA_data$Y_tax_abr)])
+
+#For each of the unique UCYN-A abbreviated names in eLSA data (X_abr or Y_abr)
+#Pull those rows
+euks=c(inter_data$name[grep(unique(eLSA_data$Y_abr[grep("UCYN", eLSA_data$Y_tax_abr)])[1], inter_data$name)],
+      inter_data$name[grep(unique(eLSA_data$Y_abr[grep("UCYN", eLSA_data$Y_tax_abr)])[2], inter_data$name)], 
+      inter_data$name[grep(unique(eLSA_data$Y_abr[grep("UCYN", eLSA_data$Y_tax_abr)])[3], inter_data$name)])
+euks=as.data.frame(euks)
+head(euks)
+
+#Split column in two
+library(tidyr)
+library(dplyr)
+DF_interact=separate(euks, col="euks", into=c("abr_hash", "UCYNA_ASV"), sep=" \\(interacts with\\) ")
+head(DF_interact)
+dim(DF_interact) #163 2
+head(DF_interact$abr_hash) #YES!
+
+#Figure out the taxa in them, comparing "names" column to abbreviated X or Y 
+DF_interact$taxon_X="SAR11"
+DF_interact$taxon_Y="SAR11"
+DF_interact$Number=0
+DF_interact$hash_X="hash"
+DF_interact$hash_Y="hash"
+
+for(i in c(1:nrow(DF_interact))){
+  if(length(unique(eLSA_data$X_tax_abr[grep(DF_interact$abr_hash[i], eLSA_data$X_abr)]))>1){
+    print(i)
+    print(unique(eLSA_data$X_tax_abr[grep(DF_interact$abr_hash[i], eLSA_data$X_abr)]))
+    print(unique(eLSA_data$X[grep(DF_interact$abr_hash[i], eLSA_data$X_abr)]))
+  } else{
+    DF_interact$taxon_X[i]=unique(eLSA_data$X_tax_abr[grep(DF_interact$abr_hash[i], eLSA_data$X_abr)])
+    DF_interact$hash_X[i]=unique(eLSA_data$X[grep(DF_interact$abr_hash[i], eLSA_data$X_abr)])
+  }
+}
+DF_interact$taxon_X[144]="Hacrobia"
+DF_interact$hash_X[144]="55bc25d102de6079cc48ba48515e72e2"
+grep("SAR11", DF_interact$taxon_X) #YUSS
+sort(unique(DF_interact$taxon_X))
+
+#Compare X and Y taxonomy columns 
+for(i in c(1:nrow(DF_interact))){
+  if(length(unique(eLSA_data$Y_tax_abr[grep(DF_interact$abr_hash[i], eLSA_data$Y_abr)]))>1){
+    print(i)
+    print(unique(eLSA_data$Y_tax_abr[grep(DF_interact$abr_hash[i], eLSA_data$Y_abr)]))
+    print(unique(eLSA_data$Y[grep(DF_interact$abr_hash[i], eLSA_data$Y_abr)]))
+  } else{
+    DF_interact$taxon_Y[i]=unique(eLSA_data$Y_tax_abr[grep(DF_interact$abr_hash[i], eLSA_data$Y_abr)])
+    DF_interact$hash_Y[i]=unique(eLSA_data$Y[grep(DF_interact$abr_hash[i], eLSA_data$Y_abr)])
+  }
+}
+DF_interact$taxon_Y[144]="Hacrobia"
+DF_interact$hash_Y[144]="55bc25d102de6079cc48ba48515e72e2"
+grep("SAR11", DF_interact$taxon_Y) #YUSS
+sort(unique(DF_interact$taxon_Y))
+
+sort(unique(c(DF_interact$taxon_X, DF_interact$taxon_Y)))
+DF_interact$taxon_X==DF_interact$taxon_Y #Not all
+DF_interact$hash_X==DF_interact$hash_Y #all true?
+#Where do discrepancies between X tax and Y tax come from?
+View(DF_interact[which(DF_interact$taxon_X!=DF_interact$taxon_Y),])
+#3 Lepidodinium, one dinophyceae and a pseudonitzchia 
+which(DF_interact$abr_hash=="c114")
+DF_interact$taxon_X[which(DF_interact$taxon_X!=DF_interact$taxon_Y)]=DF_interact$taxon_Y[which(DF_interact$taxon_X!=DF_interact$taxon_Y)]
+
+#From here on out, use X taxonomy 
+
+#Collapse taxonomy levels to just be what they are on figure
+unique(DF_interact$taxon_X)
+#Get rid of: Ciliophora (-> Alveolata), Dinophyceae (-> Dinoflagellate?), Hacrobia (-> Prymnesiophyte), 
+#Missing: Alveolata, Dinoflagellate
+
+#Okay, make these changes 
+DF_interact$taxon_X[which(DF_interact$taxon_X=="Ciliophora")]="Alveolata"
+DF_interact$taxon_X[which(DF_interact$taxon_X=="Dinophyceae")]="Dinoflagellate"
+DF_interact$taxon_X[which(DF_interact$taxon_X=="Hacrobia")]="Prymnesiophyte"
+sort(unique(DF_interact$taxon_X))
+
+#Then put a column if it interacts with UCYNA1 in AE/ Durapore or ASV5
+DF_interact$UCYNA1_larger=""
+DF_interact$UCYNA1_larger[which(DF_interact$UCYNA_ASV=="385241044219295525187_A")]="x"
+DF_interact$UCYNA1_smaller=""
+DF_interact$UCYNA1_smaller[which(DF_interact$UCYNA_ASV=="385241044219295525187_D")]="y"
+DF_interact$UCYNA2=""
+DF_interact$UCYNA2[which(DF_interact$UCYNA_ASV=="a11913318571711407_A")]="z"
+
+#Paste them
+DF_interact$Interaction=paste(DF_interact$UCYNA1_larger, DF_interact$UCYNA1_smaller, DF_interact$UCYNA2, sep="")
+
+#Subset to just take the columns I want
+subs_interact=DF_interact[-grep("UCYN", DF_interact$taxon_X), grep("_X|Interact", names(DF_interact))]
+dim(subs_interact) #161 3
+names(subs_interact)[c(1,2)]=c("Taxonomy", "ASV_hash")
+head(subs_interact)
+
+subs_interact=group_by(subs_interact, ASV_hash) %>% summarize(Interaction=toString(Interaction), Taxonomy=unique(Taxonomy))
+sort(unique(subs_interact$Interaction))
+head(subs_interact)
+dim(subs_interact) #82 2
+length(unique(subs_interact$ASV_hash)) #82
+
+# #subs_interact=group_by(subs_interact, ASV_hash) %>% summarize(Interaction=toString(Interaction))
+# subs_interact=group_by(DF_interact, hash_X) %>% select(grep("_X|Interact", names(DF_interact))) %>% mutate(Interaction=toString(Interaction))
+# names(subs_interact)[c(1,2)]=c("Taxonomy", "ASV_hash")
+
+#Change X's and Y's to be "UCYN-A1_AE" etc.
+subs_interact$Interacts_with=paste("UCYN-A1_AE", "UCYN-A1_Durapore", "UCYN-A2", sep=", ")
+head(subs_interact$Interacts_with)
+sort(unique(subs_interact$Interacts_with))
+sort(unique(subs_interact$Interaction))
+
+subs_interact$Interacts_with[which(subs_interact$Interaction %in% c("x", "x, x"))]="UCYN-A1_1-80um"
+subs_interact$Interacts_with[which(subs_interact$Interaction %in% c("x, x, y", "x, x, y, y", "x, y", "x, y, y", "y, y, x"))]=paste("UCYN-A1_1-80um", "UCYN-A1_0.22-1um", sep=", ")
+subs_interact$Interacts_with[which(subs_interact$Interaction %in% c("x, x, z", "x, x, z, z", "x, z", "x, z, z"))]=paste("UCYN-A1_1-80um", "UCYN-A2", sep=", ")
+subs_interact$Interacts_with[which(subs_interact$Interaction %in% c("y", "y, y"))]="UCYN-A1_0.22-1um"
+subs_interact$Interacts_with[which(subs_interact$Interaction %in% c("y, z"))] #None #No yz
+subs_interact$Interacts_with[which(subs_interact$Interaction %in% c("z", "z, z"))]="UCYN-A2"
+subs_interact$Interacts_with[which(subs_interact$Interaction %in% c("x, y, z, z", "x, x, y, y, z", "x, x, y, y, z", "x, y, y, z, z"))]=paste("UCYN-A1_1-80um", "UCYN-A1_0.22-1um", "UCYN-A2", sep=", ")
+
+subs_interact$Interaction[grep("AE|Durapore", subs_interact$Interacts_with)]
+sort(unique(subs_interact$Interacts_with))
+dim(subs_interact) #161 4
+
+names(subs_interact)
+subs_interact=subs_interact[,c(3, 1, 4)]
+head(subs_interact)
+
+#WRITE IT OUT!
+write.table(subs_interact, file="eLSA_output/piecewise_eLSA/CLR_5m/supp_table_18S_hashes_tax_assoc_09.13.2022_B.tsv", row.names=F, quote=F, sep="\t")
+
 #2. CLR transformed data from DCM----
 
 #Read in the data
