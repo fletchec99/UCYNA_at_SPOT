@@ -1,9 +1,9 @@
 # UCYNA_at_SPOT
 Code used in the statistical analyses of UCYN-A dynamics at SPOT
 
-Code published in association with the following manuscript: **link**
+Code published in association with the following manuscript: https://biorxiv.org/cgi/content/short/2022.11.07.514914v1
 
-Input data may be found here: **osf.io link** 
+Input data may be found here: https://osf.io/6ku49/ 
 
 
 00_ scripts are used for organizing data
